@@ -79,7 +79,7 @@
       background: #dcdde1;
       border-radius: 20px;
       overflow: hidden;
-      margin-bottom: 2rem;
+      margin-bottom: 1rem;
       border: 1px solid #ccc;
     }
 
@@ -92,9 +92,46 @@
 
     .progress-text {
       text-align: center;
-      margin-bottom: 1rem;
+      margin-bottom: 0.5rem;
       font-weight: bold;
       font-size: 1.1rem;
+    }
+
+    .milestone-checks {
+      text-align: center;
+      font-style: italic;
+      color: #555;
+      margin-bottom: 1rem;
+    }
+
+    .export-button {
+      display: block;
+      margin: 1rem auto;
+      padding: 0.5rem 1rem;
+      background: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .export-button:hover {
+      background: #2c80b4;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+      }
+      .month {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .month label {
+        width: auto;
+        margin-bottom: 0.5rem;
+      }
     }
   </style>
 </head>
@@ -104,6 +141,8 @@
 <div class="progress-bar-container">
   <div class="progress-bar" id="progress-bar"></div>
 </div>
+
+<button class="export-button" onclick="exportNotes()">Export Notes</button>
 <div id="tracker"></div>
 
 <script>
@@ -111,15 +150,16 @@
   const progressText = document.getElementById('progress');
   const progressBar = document.getElementById('progress-bar');
 
-  const startYear = new Date().getFullYear();
+  const startYear = 2025;
+  const startMonthIndex = 2; // March (0-based)
   const totalYears = 7;
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const totalMonths = totalYears * 12;
 
   function updateProgress() {
-    const total = totalYears * 12;
+    const total = totalMonths;
     const completed = document.querySelectorAll('input[type="checkbox"]:checked').length;
-    const percent = Math.floor((completed / total) * 100);
+    const percent = ((completed / total) * 100).toFixed(2);
     progressText.textContent = `Progress: ${percent}%`;
     progressBar.style.width = `${percent}%`;
   }
@@ -140,54 +180,91 @@
     return JSON.parse(localStorage.getItem('goalTrackerData') || '{}');
   }
 
+  function exportNotes() {
+    const data = loadData();
+    const text = Object.entries(data).map(([month, {checked, note}]) => {
+      return `${month}: ${checked ? "✅ Done" : "❌ Pending"}\nNote: ${note}\n`;
+    }).join('\n');
+
+    const blob = new Blob([text], {type: 'text/plain'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'goal-tracker-notes.txt';
+    link.click();
+  }
+
   const savedData = loadData();
+  let year = startYear;
+  let monthIndex = startMonthIndex;
 
-  for (let y = 0; y < totalYears; y++) {
-    const year = startYear + y;
+  for (let m = 0; m < totalMonths; m++) {
     const container = document.createElement('div');
-    container.className = 'year-container';
+    if (monthIndex === 0 || m === 0) {
+      const title = document.createElement('div');
+      title.className = 'year-title';
+      title.textContent = `Year ${Math.floor(m / 12) + 1} (${year})`;
+      container.className = 'year-container';
+      container.appendChild(title);
+      tracker.appendChild(container);
+    } else {
+      container.className = 'year-container';
+    }
 
-    const title = document.createElement('div');
-    title.className = 'year-title';
-    title.textContent = `Year ${y + 1} (${year})`;
-    container.appendChild(title);
+    const monthDiv = document.createElement('div');
+    monthDiv.className = 'month';
 
-    months.forEach((month, i) => {
-      const monthDiv = document.createElement('div');
-      monthDiv.className = 'month';
+    const monthName = months[monthIndex];
+    const key = `${year}-${monthName}`;
+    monthDiv.dataset.key = key;
 
-      const key = `${year}-${month}`;
-      monthDiv.dataset.key = key;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = savedData[key]?.checked || false;
 
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = savedData[key]?.checked || false;
+    const label = document.createElement('label');
+    label.textContent = monthName;
 
-      const label = document.createElement('label');
-      label.textContent = month;
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = "Add a note...";
+    textarea.value = savedData[key]?.note || "";
 
-      const textarea = document.createElement('textarea');
-      textarea.placeholder = "Add a note...";
-      textarea.value = savedData[key]?.note || "";
-
-      checkbox.addEventListener('change', () => {
-        saveData();
-        updateProgress();
-      });
-
-      textarea.addEventListener('input', saveData);
-
-      monthDiv.appendChild(checkbox);
-      monthDiv.appendChild(label);
-      monthDiv.appendChild(textarea);
-      container.appendChild(monthDiv);
+    checkbox.addEventListener('change', () => {
+      saveData();
+      updateProgress();
+      showSavedStatus(monthDiv);
     });
 
-    tracker.appendChild(container);
+    textarea.addEventListener('input', () => {
+      saveData();
+      showSavedStatus(monthDiv);
+    });
+
+    function showSavedStatus(parent) {
+      const existing = parent.querySelector('.saved-status');
+      if (existing) existing.remove();
+
+      const status = document.createElement("span");
+      status.className = "saved-status";
+      status.textContent = "✔️ Saved";
+      status.style.fontSize = "0.8rem";
+      status.style.color = "green";
+      parent.appendChild(status);
+      setTimeout(() => status.remove(), 1500);
+    }
+
+    monthDiv.appendChild(checkbox);
+    monthDiv.appendChild(label);
+    monthDiv.appendChild(textarea);
+    container.appendChild(monthDiv);
+
+    monthIndex++;
+    if (monthIndex > 11) {
+      monthIndex = 0;
+      year++;
+    }
   }
 
   updateProgress();
 </script>
 </body>
 </html>
-
