@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>7-Year Goal Tracker</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 2rem;
+      background: linear-gradient(to right, #fdfbfb, #ebedee);
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      color: #2c3e50;
+    }
+
+    .year-container {
+      margin-bottom: 2rem;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      padding: 1rem 1.5rem;
+      transition: 0.3s ease;
+    }
+
+    .year-title {
+      font-size: 1.4rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+      color: #3498db;
+    }
+
+    .month {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 1rem;
+      background: #f1f8ff;
+      padding: 10px;
+      border-left: 6px solid #3498db;
+      border-radius: 8px;
+    }
+
+    .month input[type="checkbox"] {
+      margin-top: 6px;
+    }
+
+    .month label {
+      font-weight: 600;
+      flex-shrink: 0;
+      width: 50px;
+    }
+
+    textarea {
+      flex-grow: 1;
+      width: 100%;
+      min-height: 50px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 0.95rem;
+      background: #fff;
+      resize: vertical;
+      transition: 0.2s;
+    }
+
+    textarea:focus {
+      border-color: #2980b9;
+      outline: none;
+      background: #eaf6ff;
+    }
+
+    .progress-bar-container {
+      height: 25px;
+      background: #dcdde1;
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+      border: 1px solid #ccc;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(to right, #4facfe, #00f2fe);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .progress-text {
+      text-align: center;
+      margin-bottom: 1rem;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+<h1>₹1 Crore Goal Tracker (7-Year Plan)</h1>
+<div class="progress-text">Progress: <span id="progress">0%</span></div>
+<div class="progress-bar-container">
+  <div class="progress-bar" id="progress-bar"></div>
+</div>
+<div id="tracker"></div>
+
+<script>
+  const tracker = document.getElementById('tracker');
+  const progressText = document.getElementById('progress');
+  const progressBar = document.getElementById('progress-bar');
+
+  const startYear = new Date().getFullYear();
+  const totalYears = 7;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  function updateProgress() {
+    const total = totalYears * 12;
+    const completed = document.querySelectorAll('input[type="checkbox"]:checked').length;
+    const percent = Math.floor((completed / total) * 100);
+    progressText.textContent = `Progress: ${percent}%`;
+    progressBar.style.width = `${percent}%`;
+  }
+
+  function saveData() {
+    const data = {};
+    document.querySelectorAll('.month').forEach(month => {
+      const key = month.dataset.key;
+      data[key] = {
+        checked: month.querySelector('input[type="checkbox"]').checked,
+        note: month.querySelector('textarea').value
+      };
+    });
+    localStorage.setItem('goalTrackerData', JSON.stringify(data));
+  }
+
+  function loadData() {
+    return JSON.parse(localStorage.getItem('goalTrackerData') || '{}');
+  }
+
+  const savedData = loadData();
+
+  for (let y = 0; y < totalYears; y++) {
+    const year = startYear + y;
+    const container = document.createElement('div');
+    container.className = 'year-container';
+
+    const title = document.createElement('div');
+    title.className = 'year-title';
+    title.textContent = `Year ${y + 1} (${year})`;
+    container.appendChild(title);
+
+    months.forEach((month, i) => {
+      const monthDiv = document.createElement('div');
+      monthDiv.className = 'month';
+
+      const key = `${year}-${month}`;
+      monthDiv.dataset.key = key;
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = savedData[key]?.checked || false;
+
+      const label = document.createElement('label');
+      label.textContent = month;
+
+      const textarea = document.createElement('textarea');
+      textarea.placeholder = "Add a note...";
+      textarea.value = savedData[key]?.note || "";
+
+      checkbox.addEventListener('change', () => {
+        saveData();
+        updateProgress();
+      });
+
+      textarea.addEventListener('input', saveData);
+
+      monthDiv.appendChild(checkbox);
+      monthDiv.appendChild(label);
+      monthDiv.appendChild(textarea);
+      container.appendChild(monthDiv);
+    });
+
+    tracker.appendChild(container);
+  }
+
+  updateProgress();
+</script>
+</body>
+</html>
+
