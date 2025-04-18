@@ -7,65 +7,69 @@
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      padding: 2rem;
+      padding: 1rem;
       background: linear-gradient(to right, #fdfbfb, #ebedee);
       color: #333;
+      margin: 0;
     }
 
     h1 {
       text-align: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
       color: #2c3e50;
+      font-size: 1.5rem;
     }
 
     .year-container {
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-      padding: 1rem 1.5rem;
-      transition: 0.3s ease;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+      padding: 1rem;
     }
 
     .year-title {
-      font-size: 1.4rem;
+      font-size: 1.2rem;
       font-weight: bold;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
       color: #3498db;
     }
 
     .month {
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
+      flex-direction: column;
       margin-bottom: 1rem;
       background: #f1f8ff;
-      padding: 10px;
-      border-left: 6px solid #3498db;
+      padding: 0.75rem;
+      border-left: 5px solid #3498db;
       border-radius: 8px;
     }
 
+    .month-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
     .month input[type="checkbox"] {
-      margin-top: 6px;
+      margin-right: 10px;
+      transform: scale(1.2);
     }
 
     .month label {
       font-weight: 600;
-      flex-shrink: 0;
-      width: 50px;
+      font-size: 1rem;
     }
 
     textarea {
-      flex-grow: 1;
-      width: 100%;
-      min-height: 50px;
+      width: 90%;
+      min-height: 60px;
       border: 1px solid #ccc;
       border-radius: 8px;
       padding: 8px;
       font-size: 0.95rem;
       background: #fff;
       resize: vertical;
-      transition: 0.2s;
     }
 
     textarea:focus {
@@ -75,11 +79,11 @@
     }
 
     .progress-bar-container {
-      height: 25px;
+      height: 20px;
       background: #dcdde1;
-      border-radius: 20px;
+      border-radius: 10px;
       overflow: hidden;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
       border: 1px solid #ccc;
     }
 
@@ -94,43 +98,22 @@
       text-align: center;
       margin-bottom: 0.5rem;
       font-weight: bold;
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
 
-    .milestone-checks {
-      text-align: center;
-      font-style: italic;
-      color: #555;
-      margin-bottom: 1rem;
-    }
-
-    .export-button {
-      display: block;
-      margin: 1rem auto;
-      padding: 0.5rem 1rem;
-      background: #3498db;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .export-button:hover {
-      background: #2c80b4;
-    }
-
-    @media (max-width: 600px) {
-      body {
-        padding: 1rem;
-      }
+    @media (min-width: 600px) {
       .month {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
       }
-      .month label {
-        width: auto;
-        margin-bottom: 0.5rem;
+
+      .month-row {
+        margin-bottom: 0;
+      }
+
+      textarea {
+        flex: 1;
       }
     }
   </style>
@@ -141,8 +124,6 @@
 <div class="progress-bar-container">
   <div class="progress-bar" id="progress-bar"></div>
 </div>
-
-<button class="export-button" onclick="exportNotes()">Export Notes</button>
 <div id="tracker"></div>
 
 <script>
@@ -151,13 +132,13 @@
   const progressBar = document.getElementById('progress-bar');
 
   const startYear = 2025;
-  const startMonthIndex = 2; // March (0-based)
+  const startMonthIndex = 2; // March = index 2
   const totalYears = 7;
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const totalMonths = totalYears * 12;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   function updateProgress() {
-    const total = totalMonths;
+    const total = document.querySelectorAll('input[type="checkbox"]').length;
     const completed = document.querySelectorAll('input[type="checkbox"]:checked').length;
     const percent = ((completed / total) * 100).toFixed(2);
     progressText.textContent = `Progress: ${percent}%`;
@@ -180,88 +161,56 @@
     return JSON.parse(localStorage.getItem('goalTrackerData') || '{}');
   }
 
-  function exportNotes() {
-    const data = loadData();
-    const text = Object.entries(data).map(([month, {checked, note}]) => {
-      return `${month}: ${checked ? "✅ Done" : "❌ Pending"}\nNote: ${note}\n`;
-    }).join('\n');
-
-    const blob = new Blob([text], {type: 'text/plain'});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'goal-tracker-notes.txt';
-    link.click();
-  }
-
   const savedData = loadData();
-  let year = startYear;
-  let monthIndex = startMonthIndex;
 
-  for (let m = 0; m < totalMonths; m++) {
+  for (let y = 0; y < totalYears; y++) {
+    const year = startYear + y;
     const container = document.createElement('div');
-    if (monthIndex === 0 || m === 0) {
-      const title = document.createElement('div');
-      title.className = 'year-title';
-      title.textContent = `Year ${Math.floor(m / 12) + 1} (${year})`;
-      container.className = 'year-container';
-      container.appendChild(title);
-      tracker.appendChild(container);
-    } else {
-      container.className = 'year-container';
+    container.className = 'year-container';
+
+    const title = document.createElement('div');
+    title.className = 'year-title';
+    title.textContent = `Year ${y + 1} (${year})`;
+    container.appendChild(title);
+
+    let startIdx = y === 0 ? startMonthIndex : 0;
+    for (let i = startIdx; i < 12; i++) {
+      const monthName = months[i];
+      const monthDiv = document.createElement('div');
+      monthDiv.className = 'month';
+
+      const key = `${year}-${monthName}`;
+      monthDiv.dataset.key = key;
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = savedData[key]?.checked || false;
+
+      const label = document.createElement('label');
+      label.textContent = monthName;
+
+      const row = document.createElement('div');
+      row.className = 'month-row';
+      row.appendChild(checkbox);
+      row.appendChild(label);
+
+      const textarea = document.createElement('textarea');
+      textarea.placeholder = "Add a note...";
+      textarea.value = savedData[key]?.note || "";
+
+      checkbox.addEventListener('change', () => {
+        saveData();
+        updateProgress();
+      });
+
+      textarea.addEventListener('input', saveData);
+
+      monthDiv.appendChild(row);
+      monthDiv.appendChild(textarea);
+      container.appendChild(monthDiv);
     }
 
-    const monthDiv = document.createElement('div');
-    monthDiv.className = 'month';
-
-    const monthName = months[monthIndex];
-    const key = `${year}-${monthName}`;
-    monthDiv.dataset.key = key;
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = savedData[key]?.checked || false;
-
-    const label = document.createElement('label');
-    label.textContent = monthName;
-
-    const textarea = document.createElement('textarea');
-    textarea.placeholder = "Add a note...";
-    textarea.value = savedData[key]?.note || "";
-
-    checkbox.addEventListener('change', () => {
-      saveData();
-      updateProgress();
-      showSavedStatus(monthDiv);
-    });
-
-    textarea.addEventListener('input', () => {
-      saveData();
-      showSavedStatus(monthDiv);
-    });
-
-    function showSavedStatus(parent) {
-      const existing = parent.querySelector('.saved-status');
-      if (existing) existing.remove();
-
-      const status = document.createElement("span");
-      status.className = "saved-status";
-      status.textContent = "✔️ Saved";
-      status.style.fontSize = "0.8rem";
-      status.style.color = "green";
-      parent.appendChild(status);
-      setTimeout(() => status.remove(), 1500);
-    }
-
-    monthDiv.appendChild(checkbox);
-    monthDiv.appendChild(label);
-    monthDiv.appendChild(textarea);
-    container.appendChild(monthDiv);
-
-    monthIndex++;
-    if (monthIndex > 11) {
-      monthIndex = 0;
-      year++;
-    }
+    tracker.appendChild(container);
   }
 
   updateProgress();
